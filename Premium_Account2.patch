@@ -1,0 +1,602 @@
+Index: ../../dp/L2J_DataPack/dist/game/data/scripts/ai/npc/PremiumData/1000001.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- ../../dp/L2J_DataPack/dist/game/data/scripts/ai/npc/PremiumData/1000001.html	(revision )
++++ ../../dp/L2J_DataPack/dist/game/data/scripts/ai/npc/PremiumData/1000001.html	(revision )
+@@ -0,0 +1,7 @@
++<html><body>
++	<center>
++		<button value="1 Day" action="bypass -h Quest PremiumData 1d" width=220 height=30 back="L2UI_CT1.Button_DF_Down" fore="L2UI_CT1.Button_DF">
++		<button value="7 Day" action="bypass -h Quest PremiumData 1w" width=220 height=30 back="L2UI_CT1.Button_DF_Down" fore="L2UI_CT1.Button_DF">
++		<button value="30 Day" action="bypass -h Quest PremiumData 1m" width=220 height=30 back="L2UI_CT1.Button_DF_Down" fore="L2UI_CT1.Button_DF"><br>
++	</center>
++</body></html>
+\ No newline at end of file
+Index: ../../dp/L2J_DataPack/dist/game/data/scripts.cfg
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- ../../dp/L2J_DataPack/dist/game/data/scripts.cfg	(date 1425827759000)
++++ ../../dp/L2J_DataPack/dist/game/data/scripts.cfg	(revision )
+@@ -9,6 +9,7 @@
+ handlers/MasterHandler.java
+ 
+ # AI Section
++ai/npc/PremiumData/PremiumData.java
+ 
+ # Npc
+ ai/npc/Alarm/Alarm.java
+Index: ../../dp/L2J_DataPack/dist/game/data/stats/npcs/custom/custom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- ../../dp/L2J_DataPack/dist/game/data/stats/npcs/custom/custom.xml	(date 1425827759000)
++++ ../../dp/L2J_DataPack/dist/game/data/stats/npcs/custom/custom.xml	(revision )
+@@ -58,4 +58,10 @@
+ 			<height normal="22.25" />
+ 		</collision>
+ 	</npc>
++	<npc id="1000001" displayId="32226" name="TEST" usingServerSideName="true" title="Premium System" usingServerSideTitle="true" type="L2Npc">
++		<collision>
++			<radius normal="11" />
++			<height normal="22.25" />
++		</collision>
++	</npc>
+ </list>
+\ No newline at end of file
+Index: ../../dp/L2J_DataPack/dist/game/data/scripts/ai/npc/PremiumData/PremiumData.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- ../../dp/L2J_DataPack/dist/game/data/scripts/ai/npc/PremiumData/PremiumData.java	(revision )
++++ ../../dp/L2J_DataPack/dist/game/data/scripts/ai/npc/PremiumData/PremiumData.java	(revision )
+@@ -0,0 +1,105 @@
++/*
++ * Copyright (C) 2004-2013 L2J DataPack
++ *
++ * This file is part of L2J DataPack.
++ *
++ * L2J DataPack is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * L2J DataPack is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++package ai.npc.PremiumData;
++
++import ai.npc.AbstractNpcAI;
++import com.l2jserver.Config;
++import com.l2jserver.gameserver.model.actor.L2Npc;
++import com.l2jserver.gameserver.model.actor.instance.L2PcInstance;
++import com.l2jserver.gameserver.datatables.Premium;
++import com.l2jserver.gameserver.network.serverpackets.ExBrPremiumState;
++
++
++/**
++ * This class provides handling of premium service bypasses
++ * @author Wednesday
++ */
++
++public final class PremiumData extends AbstractNpcAI
++{
++    private static final int PREMIIUMNPC = 1000001;
++	
++	private PremiumData()
++	{
++		super(PremiumData.class.getSimpleName(), "ai/npc");
++		addStartNpc(PREMIIUMNPC);
++		addTalkId(PREMIIUMNPC);
++		addFirstTalkId(PREMIIUMNPC);
++	}
++	
++	
++    @Override
++    public String onAdvEvent(String event, L2Npc npc, L2PcInstance player)
++    {
++        try
++        {
++            int item=Config.PS_ITEM;
++            if (!Config.ENABLE_PS)
++            {
++                return "Service is disable";
++            }
++            else
++            {
++                if(player.isPremium())
++                    return "You already have premium account";
++
++                    long Time=0;
++                    int Count=0;
++                        switch (event)
++                        {
++                            case "1d":
++                                Time=86400000L+System.currentTimeMillis();
++                                Count= Config.PS_PRICE[0];
++                                break;
++                            case "1w":
++                                Time=604800000L+System.currentTimeMillis();
++                                Count= Config.PS_PRICE[1];
++                                break;
++                            case "1m":
++                                Time=2592000000L+System.currentTimeMillis();
++                                Count= Config.PS_PRICE[2];
++                                break;
++                        }
++
++                if(Time==0 ||Count==0)
++                    return "Please send it for Administration";
++
++                if (player.getInventory().getInventoryItemCount(item,-1)<Count)
++                    return "You don't have items for this operation";
++
++                player.destroyItemByItemId("Premium System",item,Count,null,true);
++                Premium.setPremiumTime(player, Time);
++                player.sendPacket(new ExBrPremiumState(player.getObjectId(), 1));
++
++                }
++                
++        }
++        catch (Exception e)
++        {
++            _log.warning("Error in Premium system " + getClass().getSimpleName() + ": " + e.getMessage());
++            e.printStackTrace();
++        }
++        return "All done";
++    }
++
++    public static void main(String[] args)
++    {
++        new PremiumData();
++    }
++}
+\ No newline at end of file
+Index: java/com/l2jserver/gameserver/model/actor/stat/PcStat.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/gameserver/model/actor/stat/PcStat.java	(date 1425432510000)
++++ java/com/l2jserver/gameserver/model/actor/stat/PcStat.java	(revision )
+@@ -23,6 +23,7 @@
+ import com.l2jserver.Config;
+ import com.l2jserver.gameserver.data.xml.impl.ExperienceData;
+ import com.l2jserver.gameserver.data.xml.impl.PetDataTable;
++import com.l2jserver.gameserver.enums.PremiumRate;
+ import com.l2jserver.gameserver.model.L2PetLevelData;
+ import com.l2jserver.gameserver.model.PcCondOverride;
+ import com.l2jserver.gameserver.model.actor.instance.L2ClassMasterInstance;
+@@ -852,7 +853,9 @@
+ 		{
+ 			bonus += (bonusExp - 1);
+ 		}
+-		
++
++		bonus *= getActiveChar().GetPremiumBonus(PremiumRate.EXP);
++
+ 		// Check for abnormal bonuses
+ 		bonus = Math.max(bonus, 1);
+ 		bonus = Math.min(bonus, Config.MAX_BONUS_EXP);
+@@ -896,7 +899,9 @@
+ 		{
+ 			bonus += (bonusSp - 1);
+ 		}
++
++		bonus *= getActiveChar().GetPremiumBonus(PremiumRate.SP);
+-		
++
+ 		// Check for abnormal bonuses
+ 		bonus = Math.max(bonus, 1);
+ 		bonus = Math.min(bonus, Config.MAX_BONUS_SP);
+Index: java/com/l2jserver/gameserver/network/clientpackets/EnterWorld.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/gameserver/network/clientpackets/EnterWorld.java	(date 1425432510000)
++++ java/com/l2jserver/gameserver/network/clientpackets/EnterWorld.java	(revision )
+@@ -27,6 +27,7 @@
+ import com.l2jserver.gameserver.data.sql.impl.AnnouncementsTable;
+ import com.l2jserver.gameserver.data.xml.impl.AdminData;
+ import com.l2jserver.gameserver.data.xml.impl.SkillTreesData;
++import com.l2jserver.gameserver.datatables.Premium;
+ import com.l2jserver.gameserver.instancemanager.CHSiegeManager;
+ import com.l2jserver.gameserver.instancemanager.CastleManager;
+ import com.l2jserver.gameserver.instancemanager.ClanHallManager;
+@@ -85,6 +86,7 @@
+ import com.l2jserver.gameserver.network.serverpackets.ShortCutInit;
+ import com.l2jserver.gameserver.network.serverpackets.SkillCoolTime;
+ import com.l2jserver.gameserver.network.serverpackets.SystemMessage;
++import com.l2jserver.gameserver.network.serverpackets.ExBrPremiumState;
+ 
+ /**
+  * Enter World Packet Handler
+@@ -205,8 +207,13 @@
+ 			{
+ 				SkillTreesData.getInstance().addSkills(activeChar, true);
+ 			}
++		}
++
++		if(Config.ENABLE_PS){
++			Premium.Load(activeChar);
++			activeChar.sendPacket(new ExBrPremiumState(activeChar.getObjectId(), (activeChar.isPremium() ? 1 : 0)));
+ 		}
+-		
++
+ 		// Set dead status if applies
+ 		if (activeChar.getCurrentHp() < 0.5)
+ 		{
+Index: java/com/l2jserver/gameserver/model/actor/L2Character.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/gameserver/model/actor/L2Character.java	(date 1425432510000)
++++ java/com/l2jserver/gameserver/model/actor/L2Character.java	(revision )
+@@ -156,6 +156,7 @@
+ import com.l2jserver.gameserver.util.Util;
+ import com.l2jserver.util.EmptyQueue;
+ import com.l2jserver.util.Rnd;
++import com.l2jserver.gameserver.enums.PremiumRate;
+ 
+ /**
+  * Mother class of all character objects of the world (PC, NPC...)<br>
+@@ -199,7 +200,63 @@
+ 	private boolean _isInvul = false;
+ 	private boolean _isMortal = true; // Char will die when HP decreased to 0
+ 	private boolean _isFlying = false;
++	private long _timePremium=0;
+-	
++
++	public boolean isPremium() {
++		return this.getPremiumTime()>System.currentTimeMillis();
++	}
++
++	public double GetPremiumBonus(PremiumRate rate){
++		double value=1;
++		if(Config.ENABLE_PS)
++			if(!isInParty())
++				switch (rate)
++				{
++					case EXP:
++						value= isPremium() ? Config.PS_EXP:1;
++						break;
++					case SP:
++						value= isPremium() ? Config.PS_SP:1;
++						break;
++					case DROP:
++						value= isPremium() ? Config.PS_DROP:1;
++						break;
++					case SPOIL:
++						value= isPremium() ? Config.PS_DROP:1;
++						break;
++				}
++			else {
++				int countPlayer=0;
++				int countPremiumPlayer=0;
++				List<L2PcInstance> party=getParty().getMembers();
++
++				for (L2PcInstance temp : party)
++				{
++					if (Util.checkIfInRange(Config.ALT_PARTY_RANGE, this, temp, true))
++					{
++						countPlayer++;
++						if(temp.isPremium())
++							countPremiumPlayer++;
++					}
++				}
++				switch (rate) {
++					case EXP:
++						value = (((double)countPlayer-countPremiumPlayer)+(countPremiumPlayer *Config.PS_EXP))/countPlayer; //isPremium() ? Config.PS_EXP : 1;
++						break;
++					case SP:
++						value = ((((double)countPlayer-countPremiumPlayer)*1)+(countPremiumPlayer *Config.PS_SP))/countPlayer;
++						break;
++					case DROP:
++						value = ((((double)countPlayer-countPremiumPlayer)*1)+(countPremiumPlayer *Config.PS_DROP))/countPlayer;
++						break;
++					case SPOIL:
++						value = ((((double)countPlayer-countPremiumPlayer)*1)+(countPremiumPlayer *Config.PS_DROP))/countPlayer;
++						break;
++				}
++			}
++		return value;
++	}
++
+ 	private CharStat _stat;
+ 	private CharStatus _status;
+ 	private L2CharTemplate _template; // The link on the L2CharTemplate object containing generic and static properties of this L2Character type (ex : Max HP, Speed...)
+@@ -277,7 +334,14 @@
+ 	/** Future Skill Cast */
+ 	protected Future<?> _skillCast;
+ 	protected Future<?> _skillCast2;
+-	
++
++	public long getPremiumTime(){
++		return _timePremium;
++	}
++
++	public void setPremiumTime(long time){
++		_timePremium=time;
++	}
+ 	/**
+ 	 * Creates a creature.
+ 	 * @param template the creature template
+@@ -307,6 +371,7 @@
+ 	 */
+ 	public L2Character(int objectId, L2CharTemplate template)
+ 	{
++
+ 		super(objectId);
+ 		if (template == null)
+ 		{
+@@ -355,7 +420,9 @@
+ 			
+ 			Formulas.addFuncsToNewCharacter(this);
+ 		}
++
++
+-		
++
+ 		setIsInvul(true);
+ 	}
+ 	
+@@ -363,7 +430,7 @@
+ 	{
+ 		return _effectList;
+ 	}
+-	
++
+ 	/**
+ 	 * Verify if this character is under debug.
+ 	 * @return {@code true} if this character is under debug, {@code false} otherwise
+Index: java/com/l2jserver/gameserver/model/drops/GeneralDropItem.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/gameserver/model/drops/GeneralDropItem.java	(date 1425432510000)
++++ java/com/l2jserver/gameserver/model/drops/GeneralDropItem.java	(revision )
+@@ -20,15 +20,19 @@
+ 
+ import java.util.ArrayList;
+ import java.util.Collection;
++import java.util.List;
++import java.util.logging.Logger;
+ 
+ import com.l2jserver.Config;
+ import com.l2jserver.gameserver.datatables.ItemTable;
++import com.l2jserver.gameserver.enums.PremiumRate;
+ import com.l2jserver.gameserver.model.actor.L2Character;
+ import com.l2jserver.gameserver.model.holders.ItemHolder;
+ import com.l2jserver.gameserver.model.itemcontainer.Inventory;
+ import com.l2jserver.gameserver.model.items.L2Item;
+ import com.l2jserver.gameserver.util.Util;
+ import com.l2jserver.util.Rnd;
++import com.l2jserver.gameserver.model.actor.instance.L2PcInstance;
+ 
+ /**
+  * @author NosBit
+@@ -58,7 +62,7 @@
+ 	{
+ 		return 1.;
+ 	}
+-	
++	private static final Logger _log = Logger.getLogger(Config.class.getName());
+ 	protected double getGlobalAmountMultiplier()
+ 	{
+ 		return 1.;
+@@ -96,7 +100,10 @@
+ 		{
+ 			multiplier *= getItemId() != Inventory.ADENA_ID ? Config.L2JMOD_CHAMPION_REWARDS : Config.L2JMOD_CHAMPION_ADENAS_REWARDS;
+ 		}
+-		
++		if(Config.ENABLE_PS && !victim.isRaid()) {
++			double Bonus=killer.GetPremiumBonus(PremiumRate.DROP);
++			multiplier *= Bonus;
++		}
+ 		return (long) (val * multiplier);
+ 	}
+ 	
+@@ -191,7 +198,8 @@
+ 		{
+ 			multiplier *= Config.L2JMOD_CHAMPION_REWARDS;
+ 		}
++		multiplier*=killer.GetPremiumBonus(PremiumRate.DROP);
+-		
++
+ 		return (getChance() * multiplier);
+ 	}
+ 	
+Index: java/com/l2jserver/gameserver/enums/PremiumRate.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/gameserver/enums/PremiumRate.java	(revision )
++++ java/com/l2jserver/gameserver/enums/PremiumRate.java	(revision )
+@@ -0,0 +1,8 @@
++package com.l2jserver.gameserver.enums;
++
++/**
++ * Created by W on 15.03.2015.
++ */
++public enum PremiumRate {
++        EXP,SP,DROP,SPOIL
++}
+Index: java/com/l2jserver/Config.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/Config.java	(date 1425432510000)
++++ java/com/l2jserver/Config.java	(revision )
+@@ -82,6 +82,7 @@
+ 	// --------------------------------------------------
+ 	// L2J Property File Definitions
+ 	// --------------------------------------------------
++	public static final String WED_SERVICE="./config/Premium.properties";
+ 	public static final String CHARACTER_CONFIG_FILE = "./config/Character.properties";
+ 	public static final String FEATURE_CONFIG_FILE = "./config/Feature.properties";
+ 	public static final String FORTSIEGE_CONFIGURATION_FILE = "./config/FortSiege.properties";
+@@ -880,7 +881,17 @@
+ 	public static int KARMA_RATE_DROP_ITEM;
+ 	public static int KARMA_RATE_DROP_EQUIP;
+ 	public static int KARMA_RATE_DROP_EQUIP_WEAPON;
+-	
++
++	//---------------------------------------------------
++	// Wed Service
++	//---------------------------------------------------
++	public static boolean ENABLE_PS;
++	public static int PS_DROP;
++	public static int PS_ITEM;
++	public static int[] PS_PRICE;
++	public static int PS_EXP;
++	public static int PS_SP;
++	
+ 	// --------------------------------------------------
+ 	// Seven Signs Settings
+ 	// --------------------------------------------------
+@@ -2032,7 +2043,31 @@
+ 			DROP_ITEM_MIN_LEVEL_DIFFERENCE = NPC.getInt("DropItemMinLevelDifference", 5);
+ 			DROP_ITEM_MAX_LEVEL_DIFFERENCE = NPC.getInt("DropItemMaxLevelDifference", 10);
+ 			DROP_ITEM_MIN_LEVEL_GAP_CHANCE = NPC.getDouble("DropItemMinLevelGapChance", 10);
++
++			//Load Web Service
++			final PropertiesParser WedSettings = new PropertiesParser(WED_SERVICE);
++
++			ENABLE_PS=WedSettings.getBoolean("EnablePremiumSystem", false);
++			PS_DROP=WedSettings.getInt("PSDrop", 1);
++			PS_EXP=WedSettings.getInt("PSEXP", 1);
++			PS_SP=WedSettings.getInt("PSSP", 1);
++			PS_ITEM=WedSettings.getInt("PSITEM", 57);
++
++			final String[] propertySplitW = WedSettings.getString("PS_Price", "").split(";");
++			if(propertySplitW.length==3)
++			{
++				PS_PRICE=new int[3];
++
++				for (int i=0;i<3;i++)
++				{
++					PS_PRICE[i]=Integer.valueOf(propertySplitW[i]);
++
++				}
++			}else{
++				_log.warning("ERROR in load Premium system price!");
++				ENABLE_PS=false;
++			}
+-			
++
+ 			// Load Rates L2Properties file (if exists)
+ 			final PropertiesParser RatesSettings = new PropertiesParser(RATES_CONFIG_FILE);
+ 			
+Index: java/com/l2jserver/gameserver/datatables/Premium.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- java/com/l2jserver/gameserver/datatables/Premium.java	(revision )
++++ java/com/l2jserver/gameserver/datatables/Premium.java	(revision )
+@@ -0,0 +1,89 @@
++/*
++ * Copyright (C) 2004-2013 L2J Server
++ * 
++ * This file is part of L2J Server.
++ * 
++ * L2J Server is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ * 
++ * L2J Server is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * General Public License for more details.
++ * 
++ * You should have received a copy of the GNU General Public License
++ * along with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++        package com.l2jserver.gameserver.datatables;
++
++        import java.sql.Connection;
++        import java.sql.PreparedStatement;
++        import java.sql.ResultSet;
++        import java.sql.SQLException;
++        import java.util.logging.Level;
++        import java.util.logging.Logger;
++
++        import com.l2jserver.L2DatabaseFactory;
++        import com.l2jserver.gameserver.model.actor.L2Character;
++
++/**
++ * This class manages storing of premium service inforamtion.
++ * @author Wednesday
++ */
++
++public class Premium
++{
++    private static Logger _log = Logger.getLogger(Premium.class.getName());
++
++
++    // SQL DEFINITIONS
++    private static String CHECK_PREMIUM = "SELECT * FROM characters WHERE charId=?";
++    private static String CHENGE_PREMIUM_STATUS = "UPDATE characters SET PREMIUM=? WHERE charId=?; ";
++
++
++    public static long getPremiumTime(L2Character l2Character)
++    {
++        return l2Character.getPremiumTime();
++    }
++
++    public static void setPremiumTime(L2Character l2Character,long Time)
++    {
++        l2Character.setPremiumTime(Time);
++        try (Connection con = L2DatabaseFactory.getInstance().getConnection();
++             PreparedStatement statement = con.prepareStatement(CHENGE_PREMIUM_STATUS))
++            {
++                statement.setLong(1, Time);
++                statement.setInt(2, l2Character.getObjectId());
++                statement.executeUpdate();
++            }
++            catch (Exception e)
++            {
++                        _log.warning(l2Character.getName() + ":  Could not save data" + e);
++            }
++    }
++
++
++
++    public static void Load(L2Character l2Character)
++    {
++        try (Connection con = L2DatabaseFactory.getInstance().getConnection();
++             PreparedStatement ps = con.prepareStatement(CHECK_PREMIUM))
++        {
++            ps.setInt(1, l2Character.getObjectId());
++            try (ResultSet rset = ps.executeQuery())
++            {
++                while (rset.next())
++                {
++                    setPremiumTime(l2Character,rset.getLong("Premium"));
++                }
++            }
++        }
++        catch (SQLException e)
++        {
++            _log.log(Level.SEVERE, "ERROR in Premium Service: " + e.getMessage(), e);
++        }
++    }
++
++}
+\ No newline at end of file

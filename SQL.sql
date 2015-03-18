@@ -1,0 +1,1 @@
+ALTER TABLE `characters` ADD `Premium` bigint( 13 ) NOT NULL DEFAULT 0 AFTER `language`
